@@ -1,44 +1,50 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify, make_response
 import openai
 import os
 from flask_cors import CORS
 
-
 # Initialize the Flask app
 app = Flask(__name__)
-CORS(app, origins=["https://chatbot-frontend.azurewebsites.net"])
 
+# Configure CORS to allow requests from your frontend
+CORS(app, resources={r"/ask": {"origins": "https://netbot-acfpe8htana7bwfw.canadacentral-01.azurewebsites.net"}}, supports_credentials=True)
 
-# Load your OpenAI API key from the environment or config file
+# Load OpenAI API Key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+# Handle Preflight Requests (OPTIONS)
+@app.before_request
+def handle_options():
+    if request.method == "OPTIONS":
+        response = make_response()
+        response.headers.add("Access-Control-Allow-Origin", "https://netbot-acfpe8htana7bwfw.canadacentral-01.azurewebsites.net")
+        response.headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        response.headers.add("Access-Control-Allow-Credentials", "true")
+        return response
+
 @app.route('/')
-def index():
-    return render_template('index.html')  # Render the main page (index.html)
+def home():
+    return jsonify({"message": "Flask server is running!"})
 
 @app.route('/ask', methods=['POST'])
 def ask():
-    # Get the question from the JSON payload
-    data = request.get_json()  # Use request.get_json() to retrieve JSON data
+    data = request.get_json()
     user_question = data.get('question')
 
     if not user_question:
-        return jsonify({"error": "No question provided"}), 400  # Return an error if the question is missing
+        return jsonify({"error": "No question provided"}), 400  
 
-    # Send the question to the OpenAI API (GPT)
     try:
         response = openai.Completion.create(
-            engine="text-davinci-003",  # Or whichever model you prefer
+            engine="text-davinci-003",  
             prompt=user_question,
             max_tokens=150
         )
-        
-        # Return the answer from GPT as a JSON response
         return jsonify({"answer": response.choices[0].text.strip()})
     
     except Exception as e:
-        return jsonify({"error": str(e)}), 500  # Return an error if something goes wrong with the API request
+        return jsonify({"error": str(e)}), 500  
 
 if __name__ == '__main__':
-    app.run(debug=True)
-
+    app.run(host='0.0.0.0', port=5000, debug=True)  # Use 0.0.0.0 for Azure compatibility

@@ -1,26 +1,39 @@
 document.getElementById("search-button").addEventListener("click", async () => {
-    const input = document.getElementById("chat-input").value;
+    const input = document.getElementById("chat-input").value.trim();
     if (!input) return;
 
-    // Use full backend URL for the fetch request
-    const BACKEND_URL = "https://chatbot-backend-1.azurewebsites.net"; // Correct backend URL
-    const response = await fetch(`${BACKEND_URL}/ask`, {  // Use backend URL and endpoint
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: input }),
-    });
+    const BACKEND_URL = "https://chatbot-backend-1.azurewebsites.net"; // Backend URL
 
-    if (!response.ok) {
-        console.error("Error:", response.statusText);
-        return;
+    try {
+        const response = await fetch(`${BACKEND_URL}/ask`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ question: input }),
+            mode: "cors",  // Ensure CORS mode is enabled
+            credentials: "include", // Allow credentials if needed
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.error) {
+            throw new Error(`Server Error: ${data.error}`);
+        }
+
+        document.getElementById("chat-response").innerText = data.answer;
+
+        // Save question and answer in the right panel
+        const questionList = document.getElementById("previous-questions");
+        const newItem = document.createElement("li");
+        newItem.innerText = input;
+        questionList.appendChild(newItem);
+    } catch (error) {
+        console.error("Fetch Error:", error);
+        document.getElementById("chat-response").innerText = "An error occurred. Please try again.";
     }
-
-    const data = await response.json();
-    document.getElementById("chat-response").innerText = data.answer;
-
-    // Save question and answer in the right panel
-    const questionList = document.getElementById("previous-questions");
-    const newItem = document.createElement("li");
-    newItem.innerText = input;
-    questionList.appendChild(newItem);
 });
