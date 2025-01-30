@@ -1,46 +1,122 @@
+/* General Page Styles */
 body {
     font-family: Arial, sans-serif;
+    background-color: #2e2e2e;
+    color: white;
     margin: 0;
     padding: 0;
+}
+
+/* Main Layout */
+.container {
     display: flex;
     height: 100vh;
 }
 
-#app {
-    display: flex;
-    width: 100%;
-}
-
-.left-panel, .right-panel {
-    width: 20%;
-    background-color: #f4f4f4;
-    padding: 10px;
+/* Sidebar */
+.sidebar {
+    width: 25%;
+    background-color: #1e1e1e;
+    padding: 20px;
     overflow-y: auto;
 }
 
-.chat-container {
-    flex: 1;
-    padding: 20px;
+.sidebar h2 {
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+}
+
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+}
+
+.sidebar ul li {
+    padding: 8px 0;
+    font-size: 14px;
+    color: #ccc;
+}
+
+.sidebar ul li strong {
+    color: white;
+}
+
+/* Chat Section */
+.chat-section {
+    flex-grow: 1;
     display: flex;
     flex-direction: column;
+    padding: 20px;
+    background-color: #3a3a3a;
 }
 
-textarea {
-    width: 100%;
-    height: 100px;
+/* Chat Header */
+.chat-header {
+    background-color: #1e1e1e;
+    padding: 15px;
+    border-radius: 8px;
     margin-bottom: 10px;
-    padding: 10px;
 }
 
-button {
-    padding: 10px 20px;
-    background-color: #007BFF;
+/* Chat Box */
+.chat-box {
+    flex-grow: 1;
+    padding: 15px;
+    background-color: #2b2b2b;
+    border-radius: 8px;
+    overflow-y: auto;
+}
+
+/* Chat Messages */
+.message {
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+}
+
+.bot {
+    background-color: #444;
+    text-align: left;
+}
+
+.user {
+    background-color: #007bff;
+    text-align: right;
+}
+
+/* Search Input */
+.search-container {
+    display: flex;
+    margin-top: 10px;
+}
+
+#chat-input {
+    flex-grow: 1;
+    padding: 10px;
+    background-color: black;
     color: white;
+    border: 1px solid gray;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+#search-button {
+    background-color: #4a4a4a;
+    color: white;
+    padding: 10px 15px;
     border: none;
+    border-radius: 5px;
+    margin-left: 5px;
     cursor: pointer;
 }
 
-button:hover {
-    background-color: #0056b3;
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+    .sidebar {
+        width: 100%;
+    }
 }
-
