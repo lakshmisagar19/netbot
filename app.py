@@ -1,9 +1,13 @@
 from flask import Flask, render_template, request, jsonify
 import openai
 import os
+from flask_cors import CORS
+
 
 # Initialize the Flask app
 app = Flask(__name__)
+CORS(app, origins=["https://chatbot-frontend.azurewebsites.net"])
+
 
 # Load your OpenAI API key from the environment or config file
 openai.api_key = os.getenv("OPENAI_API_KEY")

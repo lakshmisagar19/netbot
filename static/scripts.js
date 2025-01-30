@@ -27,7 +27,7 @@ async function sendMessage() {
     // Show loading message
     chatbox.innerHTML += `<p><em>Loading...</em></p>`;
 
-    let response = await fetch("https://chatbot-backend.azurewebsites.net/chat", {
+    let response = await fetch("https://chatbot-backend-1.azurewebsites.net/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userMessage })
