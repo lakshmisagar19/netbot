@@ -1,50 +1,40 @@
-from flask import Flask, request, jsonify, make_response
+from flask import Flask, render_template, request, jsonify
 import openai
 import os
 from flask_cors import CORS
 
 # Initialize the Flask app
-app = Flask(__name__)
-
-# Configure CORS to allow requests from your frontend
-CORS(app, resources={r"/ask": {"origins": "https://netbot-acfpe8htana7bwfw.canadacentral-01.azurewebsites.net"}}, supports_credentials=True)
+app = Flask(__name__, static_folder='static', template_folder='templates')
+CORS(app)  # Enable CORS for API requests
 
 # Load OpenAI API Key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Handle Preflight Requests (OPTIONS)
-@app.before_request
-def handle_options():
-    if request.method == "OPTIONS":
-        response = make_response()
-        response.headers.add("Access-Control-Allow-Origin", "https://netbot-acfpe8htana7bwfw.canadacentral-01.azurewebsites.net")
-        response.headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        response.headers.add("Access-Control-Allow-Credentials", "true")
-        return response
-
+# Route to serve the frontend UI
 @app.route('/')
-def home():
-    return jsonify({"message": "Flask server is running!"})
+def index():
+    return render_template('index.html')  # Ensure index.html is inside the 'templates' folder
 
+# API Endpoint for chatbot responses
 @app.route('/ask', methods=['POST'])
 def ask():
     data = request.get_json()
     user_question = data.get('question')
 
     if not user_question:
-        return jsonify({"error": "No question provided"}), 400  
+        return jsonify({"error": "No question provided"}), 400
 
     try:
         response = openai.Completion.create(
-            engine="text-davinci-003",  
+            engine="text-davinci-003",
             prompt=user_question,
             max_tokens=150
         )
         return jsonify({"answer": response.choices[0].text.strip()})
-    
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500  
 
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# Run the Flask app
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)  # Use 0.0.0.0 for Azure compatibility
+    app.run(debug=True)
