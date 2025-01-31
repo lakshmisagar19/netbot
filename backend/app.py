@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, make_response
+from flask import Flask, request, jsonify
 import openai
 import os
 from flask_cors import CORS
@@ -6,45 +6,51 @@ from flask_cors import CORS
 # Initialize the Flask app
 app = Flask(__name__)
 
-# Configure CORS to allow requests from your frontend
+# Configure CORS for your frontend
 CORS(app, resources={r"/ask": {"origins": "https://netbot-acfpe8htana7bwfw.canadacentral-01.azurewebsites.net"}}, supports_credentials=True)
 
 # Load OpenAI API Key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Handle Preflight Requests (OPTIONS)
-@app.before_request
-def handle_options():
-    if request.method == "OPTIONS":
-        response = make_response()
-        response.headers.add("Access-Control-Allow-Origin", "https://netbot-acfpe8htana7bwfw.canadacentral-01.azurewebsites.net")
-        response.headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        response.headers.add("Access-Control-Allow-Credentials", "true")
-        return response
-
 @app.route('/')
 def home():
     return jsonify({"message": "Flask server is running!"})
 
-@app.route('/ask', methods=['POST'])
+@app.route('/ask', methods=['POST', 'OPTIONS'])
 def ask():
-    data = request.get_json()
-    user_question = data.get('question')
+    # Handle CORS Preflight Request
+    if request.method == "OPTIONS":
+        response = jsonify({"message": "CORS Preflight Handled"})
+        response.headers.add("Access-Control-Allow-Origin", "https://netbot-acfpe8htana7bwfw.canadacentral-01.azurewebsites.net")
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        response.headers.add("Access-Control-Allow-Credentials", "true")
+        return response, 200
 
-    if not user_question:
+    # Get user input
+    data = request.get_json()
+    if not data or "question" not in data:
         return jsonify({"error": "No question provided"}), 400  
 
+    user_question = data["question"]
+
     try:
+        # Call OpenAI API
         response = openai.Completion.create(
             engine="text-davinci-003",  
             prompt=user_question,
             max_tokens=150
         )
-        return jsonify({"answer": response.choices[0].text.strip()})
+        answer = response.choices[0].text.strip()
+
+        # Add CORS headers to response
+        response_data = jsonify({"answer": answer})
+        response_data.headers.add("Access-Control-Allow-Origin", "https://netbot-acfpe8htana7bwfw.canadacentral-01.azurewebsites.net")
+        response_data.headers.add("Access-Control-Allow-Credentials", "true")
+
+        return response_data
     
     except Exception as e:
         return jsonify({"error": str(e)}), 500  
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)  # Use 0.0.0.0 for Azure compatibility
+# Azure App Service uses Gunicorn, so NO app.run() is needed.
