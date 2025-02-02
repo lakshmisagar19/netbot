@@ -1,28 +1,13 @@
-from flask import Blueprint, redirect, url_for, session
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
-import requests
+import pyodbc
 
-auth_bp = Blueprint("auth", __name__)
-login_manager = LoginManager()
+conn = pyodbc.connect('DRIVER={ODBC Driver 18 for SQL Server};'
+                      'SERVER=netbot-sql-server.database.windows.net;'
+                      'PORT=1433;'
+                      'DATABASE=netbot-db;'
+                      'UID=Admins1;'
+                      'PWD=Testadmin@123')
 
-class User(UserMixin):
-    def __init__(self, id, name, email):
-        self.id = id
-        self.name = name
-        self.email = email
-
-@login_manager.user_loader
-def load_user(user_id):
-    return User(user_id, session.get("name"), session.get("email"))
-
-@auth_bp.route("/login")
-def login():
-    google_auth_url = "https://accounts.google.com/o/oauth2/auth"
-    return redirect(google_auth_url)
-
-@auth_bp.route("/logout")
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for("index"))
-
+cursor = conn.cursor()
+cursor.execute('SELECT 1')
+print(cursor.fetchone())
+conn.close()
