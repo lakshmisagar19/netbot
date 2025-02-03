@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 import openai
 from sqlalchemy import create_engine, Column, Integer, String, Text
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 app = Flask(__name__)
@@ -13,7 +13,7 @@ openai.api_version = "2024-12-03"
 openai.api_key = "4OMK9HRD55hC1OGc7CpBPxX3YCfudE7wD47SDOxDdLYEKm3S1PCuJQQJ99BBACfhMk5XJ3w3AAAAACOG0QK9"  # Replace with your Azure OpenAI API key #
 
 # Configure Azure SQL Database 
-DATABASE_URI = "mssql+pyodbc://Admins1:Testadmin@123@netbot-sql-server.database.windows.net:1433/netbot-db?driver=ODBC+Driver+18+for+SQL+Server"
+DATABASE_URI = "mssql+pyodbc://Admins1:Test!admin123@netbot-sql-server.database.windows.net:1433/netbot-db?driver=ODBC+Driver+18+for+SQL+Server"
 engine = create_engine(DATABASE_URI)
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
