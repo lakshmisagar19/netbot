@@ -1,67 +1,127 @@
-from flask import Flask, render_template, request, jsonify
-import openai
-from sqlalchemy import create_engine, Column, Integer, String, Text
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import sessionmaker
+# app.py
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_dance.contrib.google import make_google_blueprint, google
+from database import db, User, ChatHistory
+import requests
+from config import Config
 
 app = Flask(__name__)
+app.config.from_object(Config)
 
-# Configure Azure OpenAI 
-openai.api_type = "azure"
-openai.api_base = "https://laksh-m6o1120w-swedencentral.cognitiveservices.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-08-01-preview"
-openai.api_version = "2024-12-03"
-openai.api_key = "4OMK9HRD55hC1OGc7CpBPxX3YCfudE7wD47SDOxDdLYEKm3S1PCuJQQJ99BBACfhMk5XJ3w3AAAAACOG0QK9"  # Replace with your Azure OpenAI API key #
+# Initialize the database
+db.init_app(app)
 
-# Configure Azure SQL Database 
-DATABASE_URI = "mssql+pyodbc://Admins1:Test!admin123@netbot-sql-server.database.windows.net:1433/netbot-db?driver=ODBC+Driver+18+for+SQL+Server"
-engine = create_engine(DATABASE_URI)
-Session = sessionmaker(bind=engine)
-Base = declarative_base()
+# Initialize Flask-Login
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
 
-# Define the User model
-class User(Base):
-    __tablename__ = 'users'
-    id = Column(Integer, primary_key=True)
-    email = Column(String(255), unique=True)
-    questions = Column(Text)
+# Configure Google OAuth via Flask-Dance
+google_bp = make_google_blueprint(
+    client_id=app.config['GOOGLE_OAUTH_CLIENT_ID'],
+    client_secret=app.config['GOOGLE_OAUTH_CLIENT_SECRET'],
+    scope=["profile", "email"],
+    redirect_url="/google_login/authorized"
+)
+app.register_blueprint(google_bp, url_prefix="/google_login")
 
-# Create the database tables
-Base.metadata.create_all(engine)
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
-@app.route('/')
-def home():
-    return render_template('index.html')  # Serve the frontend
+# Home page: login or sign up
+@app.route('/', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    # If the user submits a local login form (for creating a new account or logging in)
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')  # In production, hash and verify!
+        user = User.query.filter_by(email=email).first()
+        if user and user.password == password:  # Replace with secure password check
+            login_user(user)
+            return redirect(url_for('index'))
+        else:
+            # Optionally create a new account if not exist (simplest version)
+            if not user:
+                user = User(email=email, password=password, name=email.split('@')[0])
+                db.session.add(user)
+                db.session.commit()
+                login_user(user)
+                return redirect(url_for('index'))
+    return render_template('login.html')
 
-@app.route('/ask', methods=['POST'])
-def ask():
-    data = request.json
-    question = data['question']
+# Route for Google OAuth login
+@app.route('/google')
+def google_login():
+    if not google.authorized:
+        return redirect(url_for("google.login"))
+    resp = google.get("/oauth2/v2/userinfo")
+    if not resp.ok:
+        return redirect(url_for('login'))
+    
+    info = resp.json()
+    email = info["email"]
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        # Create a new user
+        user = User(email=email, name=info.get("name"))
+        db.session.add(user)
+        db.session.commit()
+    login_user(user)
+    return redirect(url_for('index'))
 
+# Main page (chat interface) after login
+@app.route('/index')
+@login_required
+def index():
+    # Fetch previous chats for display
+    chats = ChatHistory.query.filter_by(user_id=current_user.id).order_by(ChatHistory.timestamp.desc()).all()
+    return render_template('index.html', chats=chats)
+
+# Endpoint to handle chat requests (AJAX call)
+@app.route('/chat', methods=['POST'])
+@login_required
+def chat():
+    user_question = request.json.get('question')
+    
     # Call Azure OpenAI API
-    response = openai.Completion.create(
-        engine="YOUR_ENGINE_NAME",  # Replace with your Azure OpenAI engine name
-        prompt=question,
-        max_tokens=150
+    openai_url = (
+        f"{app.config['AZURE_OPENAI_ENDPOINT']}openai/deployments/"
+        f"{app.config['AZURE_OPENAI_DEPLOYMENT']}/completions?api-version=2022-12-01"
     )
-
-    answer = response.choices[0].text.strip()
-    links = ["https://example.com/link1", "https://example.com/link2"]  # Replace with actual links based on the question
-
-    # Save question and answer to database
-    session = Session()
-    user = session.query(User).filter_by(email="user@example.com").first()  # Replace with actual user email
-    if user:
-        user.questions += f"\nQ: {question}\nA: {answer}"
+    headers = {
+        "Content-Type": "application/json",
+        "api-key": app.config['AZURE_OPENAI_API_KEY']
+    }
+    payload = {
+        "prompt": user_question,
+        "max_tokens": 150,
+        "temperature": 0.7,
+        "model": app.config['AZURE_OPENAI_MODEL']
+    }
+    
+    response = requests.post(openai_url, headers=headers, json=payload)
+    
+    if response.status_code != 200:
+        answer = "Sorry, there was an error processing your request."
     else:
-        user = User(email="user@example.com", questions=f"Q: {question}\nA: {answer}")
-        session.add(user)
-    session.commit()
-    session.close()
+        data = response.json()
+        # Adjust according to Azure OpenAI's response format
+        answer = data.get("choices", [{}])[0].get("text", "").strip()
+    
+    # Save the question and answer to the database
+    chat_record = ChatHistory(user_id=current_user.id, question=user_question, answer=answer)
+    db.session.add(chat_record)
+    db.session.commit()
+    
+    return jsonify({"answer": answer})
 
-    return jsonify({
-        'answer': answer,
-        'links': links
-    })
-
-if __name__ == '__main__':
-    app.run(debug=True)  # Run the Flask server
+# Logout route
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
