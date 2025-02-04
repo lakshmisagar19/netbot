@@ -1,5 +1,5 @@
-# app.py
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session
+from flask_cors import CORS  # Add this import
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_dance.contrib.google import make_google_blueprint, google
 from database import db, User, ChatHistory
@@ -15,6 +15,9 @@ db.init_app(app)
 # Initialize Flask-Login
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+
+# Enable CORS for your frontend Web App (allow only specific frontend URL)
+CORS(app, resources={r"/chat": {"origins": "https://netbot-acfpe8htana7bwfw.canadacentral-01.azurewebsites.net"}})  # Replace with your frontend URL
 
 # Configure Google OAuth via Flask-Dance
 google_bp = make_google_blueprint(

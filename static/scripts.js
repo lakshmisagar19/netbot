@@ -1,39 +1,48 @@
-document.getElementById("search-button").addEventListener("click", async () => {
-    const input = document.getElementById("chat-input").value.trim();
-    if (!input) return;
+document.addEventListener("DOMContentLoaded", function() {
+  const chatInput = document.getElementById("chat-input");
+  const sendBtn = document.getElementById("send-btn");
+  const chatDisplay = document.getElementById("chat-display");
 
-    const BACKEND_URL = "https://chatbot-backend-1.azurewebsites.net"; // Backend URL
-
-    try {
-        const response = await fetch(`${BACKEND_URL}/ask`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ question: input }),
-            mode: "cors",  // Ensure CORS mode is enabled
-            credentials: "include", // Allow credentials if needed
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (data.error) {
-            throw new Error(`Server Error: ${data.error}`);
-        }
-
-        document.getElementById("chat-response").innerText = data.answer;
-
-        // Save question and answer in the right panel
-        const questionList = document.getElementById("previous-questions");
-        const newItem = document.createElement("li");
-        newItem.innerText = input;
-        questionList.appendChild(newItem);
-    } catch (error) {
-        console.error("Fetch Error:", error);
-        document.getElementById("chat-response").innerText = "An error occurred. Please try again.";
+  sendBtn.addEventListener("click", sendQuestion);
+  
+  // Optionally allow pressing Enter to send the question
+  chatInput.addEventListener("keypress", function(e) {
+    if (e.key === 'Enter') {
+      sendQuestion();
     }
+  });
+  
+  function sendQuestion() {
+    const question = chatInput.value.trim();
+    if (!question) return;
+    
+    // Append user's question to chat display
+    const userDiv = document.createElement("div");
+    userDiv.textContent = "You: " + question;
+    chatDisplay.appendChild(userDiv);
+    
+    // Clear input
+    chatInput.value = "";
+    
+    // Send AJAX request to backend /chat endpoint
+    fetch("https://chatbot-backend-1.azurewebsites.net/chat", {  // Use your backend Azure Web App URL here
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({question: question})
+    })
+    .then(response => response.json())
+    .then(data => {
+      const botDiv = document.createElement("div");
+      botDiv.textContent = "Bot: " + data.answer;
+      chatDisplay.appendChild(botDiv);
+      
+      // Optionally, scroll to the bottom of chatDisplay
+      chatDisplay.scrollTop = chatDisplay.scrollHeight;
+    })
+    .catch(error => {
+      console.error("Error:", error);
+    });
+  }
 });
