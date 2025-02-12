@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session
 from flask_cors import CORS  # Add this import
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -129,7 +128,7 @@ def chat():
 def logout():
     logout_user()
     return redirect(url_for('login'))
-=======
+
 # filepath: /Users/lakshmisagars/network-chatbot/backend/app.py
 import os
 from datetime import datetime
@@ -266,4 +265,4 @@ def history():
 if __name__ == "__main__":
     # For local development only; in production, use a WSGI server like Gunicorn.
     app.run(debug=True)
->>>>>>> f778abf (all neew)
+
